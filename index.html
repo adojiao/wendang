@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTTP文档网盘</title>
+    <style>
+        :root {
+            --primary-color: #4285f4;
+            --secondary-color: #34a853;
+            --danger-color: #ea4335;
+            --light-gray: #f5f5f5;
+            --dark-gray: #333;
+            --border-radius: 8px;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f9f9f9;
+            color: var(--dark-gray);
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            border-bottom: 1px solid #e0e0e0;
+            margin-bottom: 30px;
+        }
+        
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        
+        .search-bar {
+            flex-grow: 1;
+            max-width: 500px;
+            margin: 0 20px;
+        }
+        
+        .search-bar input {
+            width: 100%;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: var(--border-radius);
+            font-size: 16px;
+        }
+        
+        .user-actions button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 14px;
+            margin-left: 10px;
+            transition: background-color 0.3s;
+        }
+        
+        .user-actions button:hover {
+            background-color: #3367d6;
+        }
+        
+        .upload-area {
+            background-color: white;
+            border: 2px dashed #ddd;
+            border-radius: var(--border-radius);
+            padding: 40px 20px;
+            text-align: center;
+            margin-bottom: 30px;
+            transition: all 0.3s;
+        }
+        
+        .upload-area.drag-over {
+            border-color: var(--primary-color);
+            background-color: rgba(66, 133, 244, 0.05);
+        }
+        
+        .upload-area i {
+            font-size: 48px;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+        }
+        
+        .upload-area p {
+            margin-bottom: 20px;
+            color: #666;
+        }
+        
+        .upload-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        
+        .upload-btn:hover {
+            background-color: #3367d6;
+        }
+        
+        .files-section {
+            margin-top: 30px;
+        }
+        
+        .section-title {
+            font-size: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .view-options button {
+            background: none;
+            border: 1px solid #ddd;
+            padding: 5px 10px;
+            margin-left: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .view-options button.active {
+            background-color: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+        
+        .files-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        .file-card {
+            background-color: white;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .file-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .file-icon {
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--light-gray);
+        }
+        
+        .file-icon i {
+            font-size: 48px;
+            color: var(--primary-color);
+        }
+        
+        .file-info {
+            padding: 15px;
+        }
+        
+        .file-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .file-meta {
+            display: flex;
+            justify-content: space-between;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .file-actions {
+            display: flex;
+            border-top: 1px solid #eee;
+        }
+        
+        .file-action {
+            flex: 1;
+            text-align: center;
+            padding: 10px 0;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .file-action:hover {
+            background-color: var(--light-gray);
+        }
+        
+        .file-action.download {
+            color: var(--primary-color);
+        }
+        
+        .file-action.share {
+            color: var(--secondary-color);
+        }
+        
+        .file-action.delete {
+            color: var(--danger-color);
+        }
+        
+        .file-list {
+            display: none;
+        }
+        
+        .file-list table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: white;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .file-list th, .file-list td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .file-list th {
+            background-color: var(--light-gray);
+            font-weight: 600;
+        }
+        
+        .file-list tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .file-list .file-icon {
+            height: auto;
+            display: inline-flex;
+            margin-right: 10px;
+        }
+        
+        .file-list .file-icon i {
+            font-size: 24px;
+        }
+        
+        @media (max-width: 768px) {
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .search-bar {
+                max-width: 100%;
+                margin: 15px 0;
+            }
+            
+            .files-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            }
+        }
+        
+        /* 图标样式 */
+        .icon {
+            display: inline-block;
+            width: 1em;
+            height: 1em;
+            stroke-width: 0;
+            stroke: currentColor;
+            fill: currentColor;
+        }
+        
+        /* 模态框样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background-color: white;
+            border-radius: var(--border-radius);
+            padding: 30px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .modal-title {
+            font-size: 20px;
+            font-weight: bold;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+        
+        .modal-body {
+            margin-bottom: 20px;
+        }
+        
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+        }
+        
+        .modal-footer button {
+            margin-left: 10px;
+        }
+        
+        .btn {
+            padding: 10px 15px;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        .btn-secondary {
+            background-color: #eee;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">HTTP文档网盘</div>
+            <div class="search-bar">
+                <input type="text" placeholder="搜索文件...">
+            </div>
+            <div class="user-actions">
+                <button id="loginBtn">登录</button>
+                <button id="registerBtn">注册</button>
+            </div>
+        </header>
+
+        <div class="upload-area" id="uploadArea">
+            <i class="icon">📁</i>
+            <p>拖拽文件到此处或点击上传</p>
+            <button class="upload-btn" id="uploadBtn">选择文件</button>
+            <input type="file" id="fileInput" multiple style="display: none;">
+        </div>
+
+        <div class="files-section">
+            <div class="section-title">
+                <h2>我的文件</h2>
+                <div class="view-options">
+                    <button id="gridViewBtn" class="active">网格视图</button>
+                    <button id="listViewBtn">列表视图</button>
+                </div>
+            </div>
+
+            <div class="files-grid" id="filesView">
+                <!-- 文件卡片将通过JavaScript动态生成 -->
+            </div>
+
+            <div class="file-list" id="filesListView">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>名称</th>
+                            <th>大小</th>
+                            <th>修改日期</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- 文件列表将通过JavaScript动态生成 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 登录模态框 -->
+    <div class="modal" id="loginModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">登录</div>
+                <button class="close-btn" id="closeLoginModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="loginForm">
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px;">用户名</label>
+                        <input type="text" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px;">密码</label>
+                        <input type="password" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelLogin">取消</button>
+                <button class="btn btn-primary" id="confirmLogin">登录</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 分享模态框 -->
+    <div class="modal" id="shareModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">分享文件</div>
+                <button class="close-btn" id="closeShareModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>分享链接:</p>
+                <div style="display: flex; margin-top: 10px;">
+                    <input type="text" id="shareLink" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px 0 0 4px;" readonly>
+                    <button class="btn btn-primary" id="copyLink" style="border-radius: 0 4px 4px 0;">复制</button>
+                </div>
+                <div style="margin-top: 15px;">
+                    <label>
+                        <input type="checkbox" id="expiryCheckbox">
+                        设置有效期
+                    </label>
+                    <div id="expiryOptions" style="margin-top: 10px; display: none;">
+                        <select style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            <option>1天</option>
+                            <option>7天</option>
+                            <option>30天</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelShare">取消</button>
+                <button class="btn btn-primary" id="confirmShare">生成链接</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 示例文件数据
+        const sampleFiles = [
+            { id: 1, name: '项目计划书.pdf', size: '2.4 MB', date: '2023-10-15', type: 'pdf' },
+            { id: 2, name: '财务报表.xlsx', size: '1.8 MB', date: '2023-10-12', type: 'excel' },
+            { id: 3, name: '产品设计图.jpg', size: '4.2 MB', date: '2023-10-10', type: 'image' },
+            { id: 4, name: '会议记录.docx', size: '0.8 MB', date: '2023-10-08', type: 'word' },
+            { id: 5, name: '演示文稿.pptx', size: '3.1 MB', date: '2023-10-05', type: 'powerpoint' },
+            { id: 6, name: '代码库.zip', size: '15.7 MB', date: '2023-10-01', type: 'archive' }
+        ];
+
+        // 文件类型图标映射
+        const fileIcons = {
+            pdf: '📄',
+            excel: '📊',
+            image: '🖼️',
+            word: '📝',
+            powerpoint: '📑',
+            archive: '📦',
+            default: '📁'
+        };
+
+        // DOM元素
+        const filesView = document.getElementById('filesView');
+        const filesListView = document.getElementById('filesListView');
+        const gridViewBtn = document.getElementById('gridViewBtn');
+        const listViewBtn = document.getElementById('listViewBtn');
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const loginBtn = document.getElementById('loginBtn');
+        const registerBtn = document.getElementById('registerBtn');
+        const loginModal = document.getElementById('loginModal');
+        const shareModal = document.getElementById('shareModal');
+        const closeLoginModal = document.getElementById('closeLoginModal');
+        const closeShareModal = document.getElementById('closeShareModal');
+        const cancelLogin = document.getElementById('cancelLogin');
+        const confirmLogin = document.getElementById('confirmLogin');
+        const cancelShare = document.getElementById('cancelShare');
+        const confirmShare = document.getElementById('confirmShare');
+        const copyLink = document.getElementById('copyLink');
+        const shareLink = document.getElementById('shareLink');
+        const expiryCheckbox = document.getElementById('expiryCheckbox');
+        const expiryOptions = document.getElementById('expiryOptions');
+
+        // 初始化文件列表
+        function renderFiles() {
+            // 清空现有内容
+            filesView.innerHTML = '';
+            filesListView.querySelector('tbody').innerHTML = '';
+            
+            // 渲染网格视图
+            sampleFiles.forEach(file => {
+                const fileCard = document.createElement('div');
+                fileCard.className = 'file-card';
+                fileCard.innerHTML = `
+                    <div class="file-icon">
+                        <i>${fileIcons[file.type] || fileIcons.default}</i>
+                    </div>
+                    <div class="file-info">
+                        <div class="file-name">${file.name}</div>
+                        <div class="file-meta">
+                            <span>${file.size}</span>
+                            <span>${file.date}</span>
+                        </div>
+                    </div>
+                    <div class="file-actions">
+                        <div class="file-action download" data-id="${file.id}">下载</div>
+                        <div class="file-action share" data-id="${file.id}">分享</div>
+                        <div class="file-action delete" data-id="${file.id}">删除</div>
+                    </div>
+                `;
+                filesView.appendChild(fileCard);
+            });
+            
+            // 渲染列表视图
+            sampleFiles.forEach(file => {
+                const tableRow = document.createElement('tr');
+                tableRow.innerHTML = `
+                    <td>
+                        <div class="file-icon">
+                            <i>${fileIcons[file.type] || fileIcons.default}</i>
+                        </div>
+                        ${file.name}
+                    </td>
+                    <td>${file.size}</td>
+                    <td>${file.date}</td>
+                    <td>
+                        <button class="file-action download" data-id="${file.id}">下载</button>
+                        <button class="file-action share" data-id="${file.id}">分享</button>
+                        <button class="file-action delete" data-id="${file.id}">删除</button>
+                    </td>
+                `;
+                filesListView.querySelector('tbody').appendChild(tableRow);
+            });
+            
+            // 添加事件监听器
+            addFileActionListeners();
+        }
+
+        // 添加文件操作事件监听器
+        function addFileActionListeners() {
+            // 下载按钮
+            document.querySelectorAll('.file-action.download').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const fileId = this.getAttribute('data-id');
+                    const file = sampleFiles.find(f => f.id == fileId);
+                    alert(`开始下载: ${file.name}`);
+                    // 实际应用中这里会触发文件下载
+                });
+            });
+            
+            // 分享按钮
+            document.querySelectorAll('.file-action.share').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const fileId = this.getAttribute('data-id');
+                    const file = sampleFiles.find(f => f.id == fileId);
+                    shareLink.value = `https://example.com/share/${fileId}`;
+                    shareModal.style.display = 'flex';
+                });
+            });
+            
+            // 删除按钮
+            document.querySelectorAll('.file-action.delete').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const fileId = this.getAttribute('data-id');
+                    const file = sampleFiles.find(f => f.id == fileId);
+                    if (confirm(`确定要删除 "${file.name}" 吗？`)) {
+                        alert(`文件 "${file.name}" 已删除`);
+                        // 实际应用中这里会从服务器删除文件
+                    }
+                });
+            });
+        }
+
+        // 视图切换
+        gridViewBtn.addEventListener('click', function() {
+            gridViewBtn.classList.add('active');
+            listViewBtn.classList.remove('active');
+            filesView.style.display = 'grid';
+            filesListView.style.display = 'none';
+        });
+
+        listViewBtn.addEventListener('click', function() {
+            listViewBtn.classList.add('active');
+            gridViewBtn.classList.remove('active');
+            filesView.style.display = 'none';
+            filesListView.style.display = 'block';
+        });
+
+        // 上传功能
+        uploadBtn.addEventListener('click', function() {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                alert(`选择了 ${this.files.length} 个文件准备上传`);
+                // 实际应用中这里会上传到服务器
+            }
+        });
+
+        // 拖拽上传
+        uploadArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            this.classList.add('drag-over');
+        });
+
+        uploadArea.addEventListener('dragleave', function() {
+            this.classList.remove('drag-over');
+        });
+
+        uploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.classList.remove('drag-over');
+            if (e.dataTransfer.files.length > 0) {
+                alert(`拖拽了 ${e.dataTransfer.files.length} 个文件准备上传`);
+                // 实际应用中这里会上传到服务器
+            }
+        });
+
+        // 模态框控制
+        loginBtn.addEventListener('click', function() {
+            loginModal.style.display = 'flex';
+        });
+
+        registerBtn.addEventListener('click', function() {
+            alert('注册功能即将推出');
+        });
+
+        closeLoginModal.addEventListener('click', function() {
+            loginModal.style.display = 'none';
+        });
+
+        cancelLogin.addEventListener('click', function() {
+            loginModal.style.display = 'none';
+        });
+
+        confirmLogin.addEventListener('click', function() {
+            alert('登录成功！');
+            loginModal.style.display = 'none';
+        });
+
+        closeShareModal.addEventListener('click', function() {
+            shareModal.style.display = 'none';
+        });
+
+        cancelShare.addEventListener('click', function() {
+            shareModal.style.display = 'none';
+        });
+
+        confirmShare.addEventListener('click', function() {
+            alert('分享链接已生成！');
+        });
+
+        copyLink.addEventListener('click', function() {
+            shareLink.select();
+            document.execCommand('copy');
+            alert('链接已复制到剪贴板');
+        });
+
+        expiryCheckbox.addEventListener('change', function() {
+            expiryOptions.style.display = this.checked ? 'block' : 'none';
+        });
+
+        // 点击模态框外部关闭
+        window.addEventListener('click', function(e) {
+            if (e.target === loginModal) {
+                loginModal.style.display = 'none';
+            }
+            if (e.target === shareModal) {
+                shareModal.style.display = 'none';
+            }
+        });
+
+        // 初始化
+        renderFiles();
+    </script>
+</body>
+</html>
