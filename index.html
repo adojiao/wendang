@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HTTP文档网盘</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
             --primary-color: #4285f4;
@@ -264,6 +265,23 @@
             font-size: 24px;
         }
         
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background-color: #e0e0e0;
+            border-radius: 3px;
+            margin-top: 10px;
+            overflow: hidden;
+            display: none;
+        }
+        
+        .progress {
+            height: 100%;
+            background-color: var(--primary-color);
+            width: 0%;
+            transition: width 0.3s;
+        }
+        
         @media (max-width: 768px) {
             header {
                 flex-direction: column;
@@ -278,16 +296,6 @@
             .files-grid {
                 grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
             }
-        }
-        
-        /* 图标样式 */
-        .icon {
-            display: inline-block;
-            width: 1em;
-            height: 1em;
-            stroke-width: 0;
-            stroke: currentColor;
-            fill: currentColor;
         }
         
         /* 模态框样式 */
@@ -364,6 +372,24 @@
             background-color: #eee;
             color: #333;
         }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+        
+        .empty-state i {
+            font-size: 64px;
+            margin-bottom: 20px;
+            color: #ddd;
+        }
     </style>
 </head>
 <body>
@@ -371,19 +397,22 @@
         <header>
             <div class="logo">HTTP文档网盘</div>
             <div class="search-bar">
-                <input type="text" placeholder="搜索文件...">
+                <input type="text" placeholder="搜索文件..." id="searchInput">
             </div>
             <div class="user-actions">
                 <button id="loginBtn">登录</button>
-                <button id="registerBtn">注册</button>
+                <button id="refreshBtn">刷新</button>
             </div>
         </header>
 
         <div class="upload-area" id="uploadArea">
-            <i class="icon">📁</i>
+            <i class="fas fa-cloud-upload-alt"></i>
             <p>拖拽文件到此处或点击上传</p>
             <button class="upload-btn" id="uploadBtn">选择文件</button>
             <input type="file" id="fileInput" multiple style="display: none;">
+            <div class="progress-bar" id="progressBar">
+                <div class="progress" id="progress"></div>
+            </div>
         </div>
 
         <div class="files-section">
@@ -396,7 +425,10 @@
             </div>
 
             <div class="files-grid" id="filesView">
-                <!-- 文件卡片将通过JavaScript动态生成 -->
+                <div class="loading" id="loadingIndicator">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>加载中...</p>
+                </div>
             </div>
 
             <div class="file-list" id="filesListView">
@@ -409,7 +441,7 @@
                             <th>操作</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="filesListBody">
                         <!-- 文件列表将通过JavaScript动态生成 -->
                     </tbody>
                 </table>
@@ -428,11 +460,11 @@
                 <form id="loginForm">
                     <div style="margin-bottom: 15px;">
                         <label style="display: block; margin-bottom: 5px;">用户名</label>
-                        <input type="text" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                        <input type="text" id="username" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
                     </div>
                     <div style="margin-bottom: 15px;">
                         <label style="display: block; margin-bottom: 5px;">密码</label>
-                        <input type="password" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                        <input type="password" id="password" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
                     </div>
                 </form>
             </div>
@@ -478,37 +510,46 @@
     </div>
 
     <script>
-        // 示例文件数据
-        const sampleFiles = [
-            { id: 1, name: '项目计划书.pdf', size: '2.4 MB', date: '2023-10-15', type: 'pdf' },
-            { id: 2, name: '财务报表.xlsx', size: '1.8 MB', date: '2023-10-12', type: 'excel' },
-            { id: 3, name: '产品设计图.jpg', size: '4.2 MB', date: '2023-10-10', type: 'image' },
-            { id: 4, name: '会议记录.docx', size: '0.8 MB', date: '2023-10-08', type: 'word' },
-            { id: 5, name: '演示文稿.pptx', size: '3.1 MB', date: '2023-10-05', type: 'powerpoint' },
-            { id: 6, name: '代码库.zip', size: '15.7 MB', date: '2023-10-01', type: 'archive' }
-        ];
-
+        // API基础URL - 需要替换为您的Workers URL
+        const API_BASE = 'https://your-worker.your-account.workers.dev';
+        
+        // 当前用户状态
+        let currentUser = null;
+        let authToken = localStorage.getItem('authToken');
+        
         // 文件类型图标映射
         const fileIcons = {
-            pdf: '📄',
-            excel: '📊',
-            image: '🖼️',
-            word: '📝',
-            powerpoint: '📑',
-            archive: '📦',
-            default: '📁'
+            pdf: 'far fa-file-pdf',
+            doc: 'far fa-file-word',
+            docx: 'far fa-file-word',
+            xls: 'far fa-file-excel',
+            xlsx: 'far fa-file-excel',
+            ppt: 'far fa-file-powerpoint',
+            pptx: 'far fa-file-powerpoint',
+            jpg: 'far fa-file-image',
+            jpeg: 'far fa-file-image',
+            png: 'far fa-file-image',
+            gif: 'far fa-file-image',
+            txt: 'far fa-file-alt',
+            zip: 'far fa-file-archive',
+            rar: 'far fa-file-archive',
+            default: 'far fa-file'
         };
 
         // DOM元素
         const filesView = document.getElementById('filesView');
         const filesListView = document.getElementById('filesListView');
+        const filesListBody = document.getElementById('filesListBody');
         const gridViewBtn = document.getElementById('gridViewBtn');
         const listViewBtn = document.getElementById('listViewBtn');
         const uploadArea = document.getElementById('uploadArea');
         const fileInput = document.getElementById('fileInput');
         const uploadBtn = document.getElementById('uploadBtn');
+        const progressBar = document.getElementById('progressBar');
+        const progress = document.getElementById('progress');
         const loginBtn = document.getElementById('loginBtn');
-        const registerBtn = document.getElementById('registerBtn');
+        const refreshBtn = document.getElementById('refreshBtn');
+        const searchInput = document.getElementById('searchInput');
         const loginModal = document.getElementById('loginModal');
         const shareModal = document.getElementById('shareModal');
         const closeLoginModal = document.getElementById('closeLoginModal');
@@ -521,56 +562,319 @@
         const shareLink = document.getElementById('shareLink');
         const expiryCheckbox = document.getElementById('expiryCheckbox');
         const expiryOptions = document.getElementById('expiryOptions');
+        const loadingIndicator = document.getElementById('loadingIndicator');
 
-        // 初始化文件列表
-        function renderFiles() {
-            // 清空现有内容
-            filesView.innerHTML = '';
-            filesListView.querySelector('tbody').innerHTML = '';
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuthStatus();
+            loadFiles();
+            setupEventListeners();
+        });
+
+        // 检查认证状态
+        async function checkAuthStatus() {
+            if (!authToken) {
+                showLoginState();
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/user`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const userData = await response.json();
+                    currentUser = userData;
+                    showAuthenticatedState();
+                } else {
+                    localStorage.removeItem('authToken');
+                    authToken = null;
+                    showLoginState();
+                }
+            } catch (error) {
+                console.error('Auth check failed:', error);
+                showLoginState();
+            }
+        }
+
+        // 显示登录状态
+        function showLoginState() {
+            loginBtn.textContent = '登录';
+            filesView.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-user-lock"></i>
+                    <p>请登录后查看文件</p>
+                    <button class="btn btn-primary" id="emptyLoginBtn" style="margin-top: 15px;">登录</button>
+                </div>
+            `;
+            document.getElementById('emptyLoginBtn').addEventListener('click', () => {
+                loginModal.style.display = 'flex';
+            });
+        }
+
+        // 显示已认证状态
+        function showAuthenticatedState() {
+            loginBtn.textContent = `欢迎, ${currentUser?.username || '用户'}`;
+            loadFiles();
+        }
+
+        // 设置事件监听器
+        function setupEventListeners() {
+            // 视图切换
+            gridViewBtn.addEventListener('click', function() {
+                gridViewBtn.classList.add('active');
+                listViewBtn.classList.remove('active');
+                filesView.style.display = 'grid';
+                filesListView.style.display = 'none';
+            });
+
+            listViewBtn.addEventListener('click', function() {
+                listViewBtn.classList.add('active');
+                gridViewBtn.classList.remove('active');
+                filesView.style.display = 'none';
+                filesListView.style.display = 'block';
+            });
+
+            // 上传功能
+            uploadBtn.addEventListener('click', function() {
+                fileInput.click();
+            });
+
+            fileInput.addEventListener('change', function() {
+                if (this.files.length > 0) {
+                    uploadFiles(this.files);
+                }
+            });
+
+            // 拖拽上传
+            uploadArea.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                this.classList.add('drag-over');
+            });
+
+            uploadArea.addEventListener('dragleave', function() {
+                this.classList.remove('drag-over');
+            });
+
+            uploadArea.addEventListener('drop', function(e) {
+                e.preventDefault();
+                this.classList.remove('drag-over');
+                if (e.dataTransfer.files.length > 0) {
+                    uploadFiles(e.dataTransfer.files);
+                }
+            });
+
+            // 刷新按钮
+            refreshBtn.addEventListener('click', function() {
+                loadFiles();
+            });
+
+            // 搜索功能
+            searchInput.addEventListener('input', function() {
+                filterFiles(this.value);
+            });
+
+            // 登录相关
+            loginBtn.addEventListener('click', function() {
+                if (currentUser) {
+                    // 已登录，显示用户菜单或执行登出
+                    if (confirm('确定要退出登录吗？')) {
+                        localStorage.removeItem('authToken');
+                        authToken = null;
+                        currentUser = null;
+                        checkAuthStatus();
+                    }
+                } else {
+                    loginModal.style.display = 'flex';
+                }
+            });
+
+            // 模态框控制
+            closeLoginModal.addEventListener('click', function() {
+                loginModal.style.display = 'none';
+            });
+
+            cancelLogin.addEventListener('click', function() {
+                loginModal.style.display = 'none';
+            });
+
+            confirmLogin.addEventListener('click', async function() {
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                
+                if (!username || !password) {
+                    alert('请输入用户名和密码');
+                    return;
+                }
+                
+                try {
+                    const response = await fetch(`${API_BASE}/api/login`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ username, password })
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        authToken = data.token;
+                        localStorage.setItem('authToken', authToken);
+                        loginModal.style.display = 'none';
+                        checkAuthStatus();
+                    } else {
+                        alert('登录失败，请检查用户名和密码');
+                    }
+                } catch (error) {
+                    console.error('Login error:', error);
+                    alert('登录失败，请稍后重试');
+                }
+            });
+
+            closeShareModal.addEventListener('click', function() {
+                shareModal.style.display = 'none';
+            });
+
+            cancelShare.addEventListener('click', function() {
+                shareModal.style.display = 'none';
+            });
+
+            confirmShare.addEventListener('click', function() {
+                alert('分享链接已生成！');
+            });
+
+            copyLink.addEventListener('click', function() {
+                shareLink.select();
+                document.execCommand('copy');
+                alert('链接已复制到剪贴板');
+            });
+
+            expiryCheckbox.addEventListener('change', function() {
+                expiryOptions.style.display = this.checked ? 'block' : 'none';
+            });
+
+            // 点击模态框外部关闭
+            window.addEventListener('click', function(e) {
+                if (e.target === loginModal) {
+                    loginModal.style.display = 'none';
+                }
+                if (e.target === shareModal) {
+                    shareModal.style.display = 'none';
+                }
+            });
+        }
+
+        // 加载文件列表
+        async function loadFiles() {
+            if (!authToken) return;
+            
+            try {
+                loadingIndicator.style.display = 'block';
+                
+                const response = await fetch(`${API_BASE}/api/files`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const files = await response.json();
+                    renderFiles(files);
+                } else {
+                    throw new Error('Failed to load files');
+                }
+            } catch (error) {
+                console.error('Error loading files:', error);
+                filesView.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p>加载文件失败，请刷新重试</p>
+                    </div>
+                `;
+            } finally {
+                loadingIndicator.style.display = 'none';
+            }
+        }
+
+        // 渲染文件列表
+        function renderFiles(files) {
+            if (!files || files.length === 0) {
+                filesView.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-folder-open"></i>
+                        <p>暂无文件，上传第一个文件吧</p>
+                    </div>
+                `;
+                filesListBody.innerHTML = '<tr><td colspan="4" style="text-align: center;">暂无文件</td></tr>';
+                return;
+            }
             
             // 渲染网格视图
-            sampleFiles.forEach(file => {
+            filesView.innerHTML = '';
+            files.forEach(file => {
+                const fileExt = file.name.split('.').pop().toLowerCase();
+                const iconClass = fileIcons[fileExt] || fileIcons.default;
+                
                 const fileCard = document.createElement('div');
                 fileCard.className = 'file-card';
                 fileCard.innerHTML = `
                     <div class="file-icon">
-                        <i>${fileIcons[file.type] || fileIcons.default}</i>
+                        <i class="${iconClass}"></i>
                     </div>
                     <div class="file-info">
-                        <div class="file-name">${file.name}</div>
+                        <div class="file-name" title="${file.name}">${file.name}</div>
                         <div class="file-meta">
-                            <span>${file.size}</span>
-                            <span>${file.date}</span>
+                            <span>${formatFileSize(file.size)}</span>
+                            <span>${formatDate(file.updatedAt)}</span>
                         </div>
                     </div>
                     <div class="file-actions">
-                        <div class="file-action download" data-id="${file.id}">下载</div>
-                        <div class="file-action share" data-id="${file.id}">分享</div>
-                        <div class="file-action delete" data-id="${file.id}">删除</div>
+                        <div class="file-action download" data-id="${file.id}">
+                            <i class="fas fa-download"></i>
+                        </div>
+                        <div class="file-action share" data-id="${file.id}">
+                            <i class="fas fa-share-alt"></i>
+                        </div>
+                        <div class="file-action delete" data-id="${file.id}">
+                            <i class="fas fa-trash"></i>
+                        </div>
                     </div>
                 `;
                 filesView.appendChild(fileCard);
             });
             
             // 渲染列表视图
-            sampleFiles.forEach(file => {
+            filesListBody.innerHTML = '';
+            files.forEach(file => {
+                const fileExt = file.name.split('.').pop().toLowerCase();
+                const iconClass = fileIcons[fileExt] || fileIcons.default;
+                
                 const tableRow = document.createElement('tr');
                 tableRow.innerHTML = `
                     <td>
-                        <div class="file-icon">
-                            <i>${fileIcons[file.type] || fileIcons.default}</i>
+                        <div class="file-icon" style="display: inline-flex;">
+                            <i class="${iconClass}"></i>
                         </div>
                         ${file.name}
                     </td>
-                    <td>${file.size}</td>
-                    <td>${file.date}</td>
+                    <td>${formatFileSize(file.size)}</td>
+                    <td>${formatDate(file.updatedAt)}</td>
                     <td>
-                        <button class="file-action download" data-id="${file.id}">下载</button>
-                        <button class="file-action share" data-id="${file.id}">分享</button>
-                        <button class="file-action delete" data-id="${file.id}">删除</button>
+                        <button class="file-action download" data-id="${file.id}">
+                            <i class="fas fa-download"></i> 下载
+                        </button>
+                        <button class="file-action share" data-id="${file.id}">
+                            <i class="fas fa-share-alt"></i> 分享
+                        </button>
+                        <button class="file-action delete" data-id="${file.id}">
+                            <i class="fas fa-trash"></i> 删除
+                        </button>
                     </td>
                 `;
-                filesListView.querySelector('tbody').appendChild(tableRow);
+                filesListBody.appendChild(tableRow);
             });
             
             // 添加事件监听器
@@ -583,9 +887,7 @@
             document.querySelectorAll('.file-action.download').forEach(btn => {
                 btn.addEventListener('click', function() {
                     const fileId = this.getAttribute('data-id');
-                    const file = sampleFiles.find(f => f.id == fileId);
-                    alert(`开始下载: ${file.name}`);
-                    // 实际应用中这里会触发文件下载
+                    downloadFile(fileId);
                 });
             });
             
@@ -593,9 +895,7 @@
             document.querySelectorAll('.file-action.share').forEach(btn => {
                 btn.addEventListener('click', function() {
                     const fileId = this.getAttribute('data-id');
-                    const file = sampleFiles.find(f => f.id == fileId);
-                    shareLink.value = `https://example.com/share/${fileId}`;
-                    shareModal.style.display = 'flex';
+                    shareFile(fileId);
                 });
             });
             
@@ -603,117 +903,181 @@
             document.querySelectorAll('.file-action.delete').forEach(btn => {
                 btn.addEventListener('click', function() {
                     const fileId = this.getAttribute('data-id');
-                    const file = sampleFiles.find(f => f.id == fileId);
-                    if (confirm(`确定要删除 "${file.name}" 吗？`)) {
-                        alert(`文件 "${file.name}" 已删除`);
-                        // 实际应用中这里会从服务器删除文件
-                    }
+                    deleteFile(fileId);
                 });
             });
         }
 
-        // 视图切换
-        gridViewBtn.addEventListener('click', function() {
-            gridViewBtn.classList.add('active');
-            listViewBtn.classList.remove('active');
-            filesView.style.display = 'grid';
-            filesListView.style.display = 'none';
-        });
-
-        listViewBtn.addEventListener('click', function() {
-            listViewBtn.classList.add('active');
-            gridViewBtn.classList.remove('active');
-            filesView.style.display = 'none';
-            filesListView.style.display = 'block';
-        });
-
-        // 上传功能
-        uploadBtn.addEventListener('click', function() {
-            fileInput.click();
-        });
-
-        fileInput.addEventListener('change', function() {
-            if (this.files.length > 0) {
-                alert(`选择了 ${this.files.length} 个文件准备上传`);
-                // 实际应用中这里会上传到服务器
+        // 上传文件
+        async function uploadFiles(files) {
+            if (!authToken) {
+                alert('请先登录');
+                return;
             }
-        });
-
-        // 拖拽上传
-        uploadArea.addEventListener('dragover', function(e) {
-            e.preventDefault();
-            this.classList.add('drag-over');
-        });
-
-        uploadArea.addEventListener('dragleave', function() {
-            this.classList.remove('drag-over');
-        });
-
-        uploadArea.addEventListener('drop', function(e) {
-            e.preventDefault();
-            this.classList.remove('drag-over');
-            if (e.dataTransfer.files.length > 0) {
-                alert(`拖拽了 ${e.dataTransfer.files.length} 个文件准备上传`);
-                // 实际应用中这里会上传到服务器
+            
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                try {
+                    progressBar.style.display = 'block';
+                    progress.style.width = '0%';
+                    
+                    const xhr = new XMLHttpRequest();
+                    
+                    xhr.upload.addEventListener('progress', function(e) {
+                        if (e.lengthComputable) {
+                            const percentComplete = (e.loaded / e.total) * 100;
+                            progress.style.width = percentComplete + '%';
+                        }
+                    });
+                    
+                    xhr.addEventListener('load', function() {
+                        if (xhr.status === 200) {
+                            loadFiles(); // 刷新文件列表
+                        } else {
+                            alert(`上传失败: ${file.name}`);
+                        }
+                    });
+                    
+                    xhr.addEventListener('error', function() {
+                        alert(`上传失败: ${file.name}`);
+                    });
+                    
+                    xhr.open('POST', `${API_BASE}/api/upload`);
+                    xhr.setRequestHeader('Authorization', `Bearer ${authToken}`);
+                    xhr.send(formData);
+                    
+                } catch (error) {
+                    console.error('Upload error:', error);
+                    alert(`上传失败: ${file.name}`);
+                }
             }
-        });
+        }
 
-        // 模态框控制
-        loginBtn.addEventListener('click', function() {
-            loginModal.style.display = 'flex';
-        });
-
-        registerBtn.addEventListener('click', function() {
-            alert('注册功能即将推出');
-        });
-
-        closeLoginModal.addEventListener('click', function() {
-            loginModal.style.display = 'none';
-        });
-
-        cancelLogin.addEventListener('click', function() {
-            loginModal.style.display = 'none';
-        });
-
-        confirmLogin.addEventListener('click', function() {
-            alert('登录成功！');
-            loginModal.style.display = 'none';
-        });
-
-        closeShareModal.addEventListener('click', function() {
-            shareModal.style.display = 'none';
-        });
-
-        cancelShare.addEventListener('click', function() {
-            shareModal.style.display = 'none';
-        });
-
-        confirmShare.addEventListener('click', function() {
-            alert('分享链接已生成！');
-        });
-
-        copyLink.addEventListener('click', function() {
-            shareLink.select();
-            document.execCommand('copy');
-            alert('链接已复制到剪贴板');
-        });
-
-        expiryCheckbox.addEventListener('change', function() {
-            expiryOptions.style.display = this.checked ? 'block' : 'none';
-        });
-
-        // 点击模态框外部关闭
-        window.addEventListener('click', function(e) {
-            if (e.target === loginModal) {
-                loginModal.style.display = 'none';
+        // 下载文件
+        async function downloadFile(fileId) {
+            try {
+                const response = await fetch(`${API_BASE}/api/download/${fileId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                  
+                    // 从Content-Disposition头获取文件名，如果没有则使用默认名
+                    const contentDisposition = response.headers.get('Content-Disposition');
+                    let filename = 'download';
+                    if (contentDisposition) {
+                        const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
+                        if (filenameMatch) filename = filenameMatch[1];
+                    }
+                  
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                } else {
+                    alert('下载失败');
+                }
+            } catch (error) {
+                console.error('Download error:', error);
+                alert('下载失败');
             }
-            if (e.target === shareModal) {
-                shareModal.style.display = 'none';
-            }
-        });
+        }
 
-        // 初始化
-        renderFiles();
+        // 分享文件
+        async function shareFile(fileId) {
+            try {
+                const response = await fetch(`${API_BASE}/api/share/${fileId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    shareLink.value = data.shareUrl;
+                    shareModal.style.display = 'flex';
+                } else {
+                    alert('生成分享链接失败');
+                }
+            } catch (error) {
+                console.error('Share error:', error);
+                alert('生成分享链接失败');
+            }
+        }
+
+        // 删除文件
+        async function deleteFile(fileId) {
+            if (!confirm('确定要删除这个文件吗？')) return;
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/files/${fileId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    loadFiles(); // 刷新文件列表
+                } else {
+                    alert('删除失败');
+                }
+            } catch (error) {
+                console.error('Delete error:', error);
+                alert('删除失败');
+            }
+        }
+
+        // 过滤文件
+        function filterFiles(query) {
+            const fileCards = document.querySelectorAll('.file-card');
+            const tableRows = document.querySelectorAll('#filesListBody tr');
+            
+            fileCards.forEach(card => {
+                const fileName = card.querySelector('.file-name').textContent.toLowerCase();
+                if (fileName.includes(query.toLowerCase())) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+            
+            tableRows.forEach(row => {
+                const fileName = row.cells[0].textContent.toLowerCase();
+                if (fileName.includes(query.toLowerCase())) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        // 工具函数：格式化文件大小
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // 工具函数：格式化日期
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('zh-CN');
+        }
     </script>
 </body>
 </html>
