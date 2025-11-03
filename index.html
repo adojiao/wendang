@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GitHub TXT文件HTTP访问</title>
+    <title>GitHub TXT文件HTTP代理</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -51,7 +51,6 @@
             padding: 15px;
             background: #e7f3ff;
             border-radius: 5px;
-            display: none;
         }
         .link-box {
             background: white;
@@ -61,38 +60,54 @@
             margin: 10px 0;
             word-break: break-all;
         }
+        .file-content {
+            background: #f8f9fa;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin: 10px 0;
+            white-space: pre-wrap;
+            font-family: monospace;
+            max-height: 300px;
+            overflow-y: auto;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>GitHub TXT文件HTTP访问工具</h1>
+        <h1>GitHub TXT文件HTTP代理</h1>
         
         <div class="input-group">
             <label>GitHub Raw链接：</label>
             <input type="text" id="githubUrl" placeholder="https://raw.githubusercontent.com/username/repo/main/file.txt">
-            <button onclick="convertToHttp()">生成HTTP链接</button>
+            <button onclick="fetchFile()">获取文件内容</button>
         </div>
 
         <div class="result" id="result">
-            <h3>生成的HTTP链接：</h3>
-            <div class="link-box" id="httpLink"></div>
-            <button onclick="copyLink()">复制链接</button>
-            <button onclick="testLink()">测试下载</button>
+            <h3>文件内容：</h3>
+            <div class="file-content" id="fileContent">内容将显示在这里...</div>
+            
+            <h3>HTTP代理链接：</h3>
+            <div class="link-box" id="proxyLink"></div>
+            <button onclick="copyProxyLink()">复制代理链接</button>
+            <button onclick="downloadFile()">下载文件</button>
         </div>
 
         <div style="margin-top: 30px;">
-            <h3>快速使用示例：</h3>
-            <p>直接将您的GitHub Raw链接粘贴到上方输入框，系统会自动转换为HTTP链接。</p>
-            <p><strong>格式说明：</strong></p>
+            <h3>支持的CDN服务：</h3>
             <ul>
-                <li>GitHub Raw: <code>https://raw.githubusercontent.com/用户名/仓库/分支/路径/文件.txt</code></li>
-                <li>HTTP链接: <code>http://cdn.jsdelivr.net/gh/用户名/仓库@分支/路径/文件.txt</code></li>
+                <li><strong>statically.io</strong> - 支持HTTP</li>
+                <li><strong>githack.com</strong> - 支持HTTP</li>
+                <li><strong>gitcdn.link</strong> - 支持HTTP</li>
             </ul>
         </div>
     </div>
 
     <script>
-        function convertToHttp() {
+        let currentFileContent = '';
+        let currentFileName = '';
+
+        async function fetchFile() {
             const githubUrl = document.getElementById('githubUrl').value.trim();
             
             if (!githubUrl) {
@@ -100,43 +115,73 @@
                 return;
             }
 
-            // 解析GitHub Raw链接
-            const match = githubUrl.match(/https:\/\/raw\.githubusercontent\.com\/([^\/]+)\/([^\/]+)\/([^\/]+)\/(.+)/);
-            
-            if (!match) {
-                alert('请输入有效的GitHub Raw链接格式');
-                return;
+            try {
+                // 使用CORS代理来避免跨域问题
+                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(githubUrl)}`;
+                const response = await fetch(proxyUrl);
+                
+                if (!response.ok) {
+                    throw new Error('文件获取失败');
+                }
+                
+                const content = await response.text();
+                currentFileContent = content;
+                
+                // 从URL提取文件名
+                const fileName = githubUrl.split('/').pop() || 'file.txt';
+                currentFileName = fileName;
+                
+                // 显示文件内容
+                document.getElementById('fileContent').textContent = content;
+                
+                // 生成代理链接
+                const currentUrl = new URL(window.location.href);
+                currentUrl.searchParams.set('file', btoa(githubUrl));
+                document.getElementById('proxyLink').textContent = currentUrl.toString();
+                
+            } catch (error) {
+                alert('获取文件失败: ' + error.message);
             }
-
-            const [, username, repo, branch, filePath] = match;
-            
-            // 生成jsDelivr HTTP链接
-            const httpLink = `http://cdn.jsdelivr.net/gh/${username}/${repo}@${branch}/${filePath}`;
-            
-            document.getElementById('httpLink').textContent = httpLink;
-            document.getElementById('result').style.display = 'block';
         }
 
-        function copyLink() {
-            const link = document.getElementById('httpLink').textContent;
+        function copyProxyLink() {
+            const link = document.getElementById('proxyLink').textContent;
             navigator.clipboard.writeText(link).then(() => {
-                alert('链接已复制到剪贴板！');
+                alert('代理链接已复制到剪贴板！');
             });
         }
 
-        function testLink() {
-            const link = document.getElementById('httpLink').textContent;
-            window.open(link, '_blank');
+        function downloadFile() {
+            if (!currentFileContent) {
+                alert('请先获取文件内容');
+                return;
+            }
+            
+            const blob = new Blob([currentFileContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = currentFileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
 
-        // 自动检测并转换粘贴的链接
-        document.getElementById('githubUrl').addEventListener('paste', function(e) {
-            setTimeout(() => {
-                const text = this.value;
-                if (text.includes('raw.githubusercontent.com')) {
-                    convertToHttp();
+        // 页面加载时检查URL参数
+        window.addEventListener('load', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const fileParam = urlParams.get('file');
+            
+            if (fileParam) {
+                try {
+                    const githubUrl = atob(fileParam);
+                    document.getElementById('githubUrl').value = githubUrl;
+                    fetchFile();
+                } catch (error) {
+                    console.error('无效的文件参数');
                 }
-            }, 100);
+            }
         });
     </script>
 </body>
