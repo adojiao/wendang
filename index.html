@@ -3,754 +3,141 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HTTP文本文件网盘 - jsDelivr版</title>
+    <title>GitHub TXT文件HTTP访问</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-            color: #333;
-        }
-        
-        .container {
-            max-width: 900px;
+            font-family: Arial, sans-serif;
+            max-width: 800px;
             margin: 0 auto;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            overflow: hidden;
-        }
-        
-        header {
-            background: #2c3e50;
-            color: white;
-            padding: 30px;
-            text-align: center;
-        }
-        
-        .logo {
-            font-size: 28px;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-        
-        .subtitle {
-            color: #bdc3c7;
-            font-size: 16px;
-        }
-        
-        .main-content {
-            padding: 30px;
-        }
-        
-        .config-section {
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            border-radius: 8px;
             padding: 20px;
-            margin-bottom: 20px;
+            background: #f5f5f5;
         }
-        
-        .config-title {
-            font-weight: 600;
-            margin-bottom: 15px;
-            color: #856404;
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
-        
-        .config-form {
-            display: grid;
-            gap: 15px;
+        h1 {
+            color: #333;
+            text-align: center;
         }
-        
-        .form-group {
-            display: flex;
-            flex-direction: column;
+        .input-group {
+            margin: 20px 0;
         }
-        
-        .form-label {
+        label {
+            display: block;
             margin-bottom: 5px;
-            font-weight: 500;
+            font-weight: bold;
         }
-        
-        .form-input {
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-        
-        .upload-section {
-            background: #f8f9fa;
-            border: 2px dashed #dee2e6;
-            border-radius: 8px;
-            padding: 40px 20px;
-            text-align: center;
-            margin-bottom: 30px;
-            transition: all 0.3s;
-        }
-        
-        .upload-section.drag-over {
-            border-color: #3498db;
-            background: #ebf5fb;
-        }
-        
-        .upload-icon {
-            font-size: 48px;
-            color: #3498db;
-            margin-bottom: 16px;
-        }
-        
-        .upload-text {
-            margin-bottom: 20px;
-            color: #666;
-        }
-        
-        .upload-btn {
-            background: #3498db;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: 500;
-            transition: background 0.3s;
-        }
-        
-        .upload-btn:hover {
-            background: #2980b9;
-        }
-        
-        .file-input {
-            display: none;
-        }
-        
-        .files-section {
-            background: white;
-        }
-        
-        .section-title {
-            font-size: 20px;
-            font-weight: 600;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #f1f3f4;
-        }
-        
-        .file-list {
-            list-style: none;
-        }
-        
-        .file-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px;
-            border-bottom: 1px solid #f1f3f4;
-            transition: background 0.2s;
-        }
-        
-        .file-item:hover {
-            background: #f8f9fa;
-        }
-        
-        .file-info {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        
-        .file-icon {
-            color: #3498db;
-            font-size: 20px;
-        }
-        
-        .file-name {
-            font-weight: 500;
-        }
-        
-        .file-actions {
-            display: flex;
-            gap: 10px;
-        }
-        
-        .action-btn {
-            background: none;
-            border: 1px solid #ddd;
-            padding: 6px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.2s;
-        }
-        
-        .download-btn {
-            color: #27ae60;
-            border-color: #27ae60;
-        }
-        
-        .download-btn:hover {
-            background: #27ae60;
-            color: white;
-        }
-        
-        .delete-btn {
-            color: #e74c3c;
-            border-color: #e74c3c;
-        }
-        
-        .delete-btn:hover {
-            background: #e74c3c;
-            color: white;
-        }
-        
-        .empty-state {
-            text-align: center;
-            padding: 40px 20px;
-            color: #666;
-        }
-        
-        .empty-icon {
-            font-size: 64px;
-            color: #bdc3c7;
-            margin-bottom: 16px;
-        }
-        
-        .progress-bar {
+        input, button {
             width: 100%;
-            height: 6px;
-            background: #e0e0e0;
-            border-radius: 3px;
-            margin-top: 15px;
-            overflow: hidden;
-            display: none;
-        }
-        
-        .progress {
-            height: 100%;
-            background: #3498db;
-            width: 0%;
-            transition: width 0.3s;
-        }
-        
-        .link-section {
-            background: #e8f5e8;
-            border: 1px solid #27ae60;
-            border-radius: 6px;
-            padding: 15px;
-            margin-top: 15px;
-            display: none;
-        }
-        
-        .link-title {
-            font-weight: 600;
-            margin-bottom: 8px;
-            color: #2d5016;
-        }
-        
-        .link-url {
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 4px;
             padding: 10px;
-            font-family: monospace;
-            word-break: break-all;
-            margin-bottom: 10px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
         }
-        
-        .copy-btn {
-            background: #27ae60;
+        button {
+            background: #007cba;
             color: white;
             border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
             cursor: pointer;
         }
-        
-        .alert {
-            padding: 12px 16px;
-            border-radius: 6px;
-            margin-bottom: 20px;
+        button:hover {
+            background: #005a87;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e7f3ff;
+            border-radius: 5px;
             display: none;
         }
-        
-        .alert-error {
-            background: #fde8e8;
-            border: 1px solid #f5c6c6;
-            color: #721c24;
-        }
-        
-        .alert-success {
-            background: #d4edda;
-            border: 1px solid #c3e6cb;
-            color: #155724;
-        }
-        
-        .info-box {
-            background: #d1ecf1;
-            border: 1px solid #bee5eb;
-            border-radius: 6px;
-            padding: 15px;
-            margin-bottom: 20px;
-            color: #0c5460;
-        }
-        
-        @media (max-width: 600px) {
-            .file-item {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 10px;
-            }
-            
-            .file-actions {
-                align-self: flex-end;
-            }
+        .link-box {
+            background: white;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            margin: 10px 0;
+            word-break: break-all;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <header>
-            <div class="logo">HTTP文本文件网盘 - jsDelivr版</div>
-            <div class="subtitle">通过jsDelivr CDN提供HTTP直接下载链接</div>
-        </header>
+        <h1>GitHub TXT文件HTTP访问工具</h1>
         
-        <div class="main-content">
-            <div class="info-box">
-                <strong>使用说明：</strong> 配置GitHub仓库信息后，上传.txt文件，系统会通过jsDelivr CDN生成HTTP链接，任何人都可以通过此链接直接下载文件。
-            </div>
-            
-            <div id="alert" class="alert"></div>
-            
-            <div class="config-section">
-                <div class="config-title">GitHub仓库配置</div>
-                <div class="config-form">
-                    <div class="form-group">
-                        <label class="form-label">GitHub用户名</label>
-                        <input type="text" id="repoOwner" class="form-input" placeholder="您的GitHub用户名">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">仓库名称</label>
-                        <input type="text" id="repoName" class="form-input" placeholder="仓库名称">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">分支名称</label>
-                        <input type="text" id="branch" class="form-input" value="main" placeholder="默认为main">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">文件夹路径（可选）</label>
-                        <input type="text" id="folderPath" class="form-input" placeholder="例如: files 或留空">
-                    </div>
-                    <button class="upload-btn" id="saveConfig">保存配置</button>
-                </div>
-            </div>
-            
-            <div class="upload-section" id="uploadArea">
-                <div class="upload-icon">📄</div>
-                <div class="upload-text">拖拽.txt文件到此处或点击上传</div>
-                <button class="upload-btn" id="uploadBtn">选择文件</button>
-                <input type="file" id="fileInput" class="file-input" accept=".txt">
-                <div class="progress-bar" id="progressBar">
-                    <div class="progress" id="progress"></div>
-                </div>
-            </div>
-            
-            <div class="link-section" id="linkSection">
-                <div class="link-title">HTTP下载链接已生成：</div>
-                <div class="link-url" id="linkUrl"></div>
-                <button class="copy-btn" id="copyLink">复制链接</button>
-            </div>
-            
-            <div class="files-section">
-                <div class="section-title">已上传的文件</div>
-                <ul class="file-list" id="fileList">
-                    <li class="empty-state" id="emptyState">
-                        <div class="empty-icon">📁</div>
-                        <div>暂无文件，上传第一个文件吧</div>
-                    </li>
-                </ul>
-            </div>
+        <div class="input-group">
+            <label>GitHub Raw链接：</label>
+            <input type="text" id="githubUrl" placeholder="https://raw.githubusercontent.com/username/repo/main/file.txt">
+            <button onclick="convertToHttp()">生成HTTP链接</button>
+        </div>
+
+        <div class="result" id="result">
+            <h3>生成的HTTP链接：</h3>
+            <div class="link-box" id="httpLink"></div>
+            <button onclick="copyLink()">复制链接</button>
+            <button onclick="testLink()">测试下载</button>
+        </div>
+
+        <div style="margin-top: 30px;">
+            <h3>快速使用示例：</h3>
+            <p>直接将您的GitHub Raw链接粘贴到上方输入框，系统会自动转换为HTTP链接。</p>
+            <p><strong>格式说明：</strong></p>
+            <ul>
+                <li>GitHub Raw: <code>https://raw.githubusercontent.com/用户名/仓库/分支/路径/文件.txt</code></li>
+                <li>HTTP链接: <code>http://cdn.jsdelivr.net/gh/用户名/仓库@分支/路径/文件.txt</code></li>
+            </ul>
         </div>
     </div>
 
     <script>
-        // 配置信息
-        const CONFIG = {
-            repoOwner: localStorage.getItem('repoOwner') || '',
-            repoName: localStorage.getItem('repoName') || '',
-            branch: localStorage.getItem('branch') || 'main',
-            folderPath: localStorage.getItem('folderPath') || '',
-            accessToken: localStorage.getItem('accessToken') || ''
-        };
-        
-        // DOM元素
-        const uploadArea = document.getElementById('uploadArea');
-        const fileInput = document.getElementById('fileInput');
-        const uploadBtn = document.getElementById('uploadBtn');
-        const progressBar = document.getElementById('progressBar');
-        const progress = document.getElementById('progress');
-        const fileList = document.getElementById('fileList');
-        const emptyState = document.getElementById('emptyState');
-        const linkSection = document.getElementById('linkSection');
-        const linkUrl = document.getElementById('linkUrl');
-        const copyLink = document.getElementById('copyLink');
-        const alertBox = document.getElementById('alert');
-        const saveConfigBtn = document.getElementById('saveConfig');
-        const repoOwnerInput = document.getElementById('repoOwner');
-        const repoNameInput = document.getElementById('repoName');
-        const branchInput = document.getElementById('branch');
-        const folderPathInput = document.getElementById('folderPath');
-        
-        // 已上传文件列表
-        let uploadedFiles = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
-        
-        // 初始化
-        document.addEventListener('DOMContentLoaded', function() {
-            loadConfig();
-            renderFileList();
-            setupEventListeners();
-        });
-        
-        // 加载配置
-        function loadConfig() {
-            repoOwnerInput.value = CONFIG.repoOwner;
-            repoNameInput.value = CONFIG.repoName;
-            branchInput.value = CONFIG.branch;
-            folderPathInput.value = CONFIG.folderPath;
-        }
-        
-        // 保存配置
-        function saveConfig() {
-            CONFIG.repoOwner = repoOwnerInput.value.trim();
-            CONFIG.repoName = repoNameInput.value.trim();
-            CONFIG.branch = branchInput.value.trim() || 'main';
-            CONFIG.folderPath = folderPathInput.value.trim();
+        function convertToHttp() {
+            const githubUrl = document.getElementById('githubUrl').value.trim();
             
-            localStorage.setItem('repoOwner', CONFIG.repoOwner);
-            localStorage.setItem('repoName', CONFIG.repoName);
-            localStorage.setItem('branch', CONFIG.branch);
-            localStorage.setItem('folderPath', CONFIG.folderPath);
-            
-            showAlert('配置保存成功！', 'success');
-        }
-        
-        // 设置事件监听器
-        function setupEventListeners() {
-            // 保存配置按钮
-            saveConfigBtn.addEventListener('click', saveConfig);
-            
-            // 上传按钮
-            uploadBtn.addEventListener('click', function() {
-                fileInput.click();
-            });
-            
-            // 文件选择
-            fileInput.addEventListener('change', function() {
-                if (this.files.length > 0) {
-                    handleFileUpload(this.files[0]);
-                }
-            });
-            
-            // 拖拽上传
-            uploadArea.addEventListener('dragover', function(e) {
-                e.preventDefault();
-                this.classList.add('drag-over');
-            });
-            
-            uploadArea.addEventListener('dragleave', function() {
-                this.classList.remove('drag-over');
-            });
-            
-            uploadArea.addEventListener('drop', function(e) {
-                e.preventDefault();
-                this.classList.remove('drag-over');
-                if (e.dataTransfer.files.length > 0) {
-                    const file = e.dataTransfer.files[0];
-                    if (file.name.endsWith('.txt')) {
-                        handleFileUpload(file);
-                    } else {
-                        showAlert('请上传.txt文件', 'error');
-                    }
-                }
-            });
-            
-            // 复制链接按钮
-            copyLink.addEventListener('click', function() {
-                navigator.clipboard.writeText(linkUrl.textContent)
-                    .then(() => {
-                        showAlert('链接已复制到剪贴板', 'success');
-                    })
-                    .catch(() => {
-                        // 备用方案
-                        const textArea = document.createElement('textarea');
-                        textArea.value = linkUrl.textContent;
-                        document.body.appendChild(textArea);
-                        textArea.select();
-                        document.execCommand('copy');
-                        document.body.removeChild(textArea);
-                        showAlert('链接已复制到剪贴板', 'success');
-                    });
-            });
-        }
-        
-        // 处理文件上传
-        async function handleFileUpload(file) {
-            // 验证配置
-            if (!CONFIG.repoOwner || !CONFIG.repoName) {
-                showAlert('请先配置GitHub仓库信息', 'error');
+            if (!githubUrl) {
+                alert('请输入GitHub Raw链接');
                 return;
             }
+
+            // 解析GitHub Raw链接
+            const match = githubUrl.match(/https:\/\/raw\.githubusercontent\.com\/([^\/]+)\/([^\/]+)\/([^\/]+)\/(.+)/);
             
-            // 验证文件类型
-            if (!file.name.endsWith('.txt')) {
-                showAlert('请上传.txt文件', 'error');
+            if (!match) {
+                alert('请输入有效的GitHub Raw链接格式');
                 return;
             }
+
+            const [, username, repo, branch, filePath] = match;
             
-            // 检查文件大小
-            if (file.size > 1024 * 1024) { // 1MB
-                showAlert('文件太大，请上传小于1MB的文本文件', 'error');
-                return;
-            }
+            // 生成jsDelivr HTTP链接
+            const httpLink = `http://cdn.jsdelivr.net/gh/${username}/${repo}@${branch}/${filePath}`;
             
-            try {
-                progressBar.style.display = 'block';
-                progress.style.width = '0%';
-                
-                // 读取文件内容
-                const content = await readFileAsText(file);
-                progress.style.width = '50%';
-                
-                // 上传到GitHub
-                const fileUrl = await uploadToGitHub(file.name, content);
-                progress.style.width = '100%';
-                
-                // 保存文件信息
-                const fileInfo = {
-                    id: generateId(),
-                    name: file.name,
-                    url: fileUrl,
-                    uploadedAt: new Date().toISOString()
-                };
-                
-                uploadedFiles.unshift(fileInfo);
-                saveFileList();
-                
-                // 显示成功信息
-                setTimeout(() => {
-                    progressBar.style.display = 'none';
-                    showAlert('文件上传成功！', 'success');
-                    showFileLink(fileUrl);
-                    renderFileList();
-                }, 500);
-                
-            } catch (error) {
-                console.error('Upload error:', error);
-                progressBar.style.display = 'none';
-                showAlert('上传失败: ' + error.message, 'error');
-            }
+            document.getElementById('httpLink').textContent = httpLink;
+            document.getElementById('result').style.display = 'block';
         }
-        
-        // 读取文件内容
-        function readFileAsText(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = e => resolve(e.target.result);
-                reader.onerror = e => reject(new Error('文件读取失败'));
-                reader.readAsText(file);
+
+        function copyLink() {
+            const link = document.getElementById('httpLink').textContent;
+            navigator.clipboard.writeText(link).then(() => {
+                alert('链接已复制到剪贴板！');
             });
         }
-        
-        // 上传到GitHub
-        async function uploadToGitHub(filename, content) {
-            // 文件路径
-            const filePath = CONFIG.folderPath 
-                ? `${CONFIG.folderPath}/${filename}`
-                : filename;
-            
-            // API URL
-            const apiUrl = `https://api.github.com/repos/${CONFIG.repoOwner}/${CONFIG.repoName}/contents/${filePath}`;
-            
-            // 检查文件是否已存在
-            let sha = null;
-            try {
-                const response = await fetch(apiUrl, {
-                    headers: {
-                        'Accept': 'application/vnd.github.v3+json'
-                    }
-                });
-                
-                if (response.ok) {
-                    const fileData = await response.json();
-                    sha = fileData.sha;
-                }
-            } catch (error) {
-                // 文件不存在，继续上传
-            }
-            
-            // 准备上传数据
-            const uploadData = {
-                message: `Upload ${filename}`,
-                content: btoa(unescape(encodeURIComponent(content))),
-                branch: CONFIG.branch
-            };
-            
-            if (sha) {
-                uploadData.sha = sha; // 更新现有文件
-            }
-            
-            // 上传文件
-            const response = await fetch(apiUrl, {
-                method: 'PUT',
-                headers: {
-                    'Accept': 'application/vnd.github.v3+json',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(uploadData)
-            });
-            
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || '上传失败');
-            }
-            
-            // 生成jsDelivr链接
-            const encodedFilePath = encodeURIComponent(filePath).replace(/%2F/g, '/');
-            return `http://cdn.jsdelivr.net/gh/${CONFIG.repoOwner}/${CONFIG.repoName}@${CONFIG.branch}/${encodedFilePath}`;
+
+        function testLink() {
+            const link = document.getElementById('httpLink').textContent;
+            window.open(link, '_blank');
         }
-        
-        // 渲染文件列表
-        function renderFileList() {
-            if (uploadedFiles.length === 0) {
-                emptyState.style.display = 'block';
-                fileList.innerHTML = '<li class="empty-state" id="emptyState"><div class="empty-icon">📁</div><div>暂无文件，上传第一个文件吧</div></li>';
-                return;
-            }
-            
-            emptyState.style.display = 'none';
-            
-            fileList.innerHTML = uploadedFiles.map(file => `
-                <li class="file-item">
-                    <div class="file-info">
-                        <div class="file-icon">📄</div>
-                        <div class="file-name">${file.name}</div>
-                    </div>
-                    <div class="file-actions">
-                        <button class="action-btn download-btn" data-url="${file.url}">
-                            复制链接
-                        </button>
-                        <button class="action-btn delete-btn" data-id="${file.id}">
-                            删除
-                        </button>
-                    </div>
-                </li>
-            `).join('');
-            
-            // 添加事件监听器
-            document.querySelectorAll('.download-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const url = this.getAttribute('data-url');
-                    showFileLink(url);
-                });
-            });
-            
-            document.querySelectorAll('.delete-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const fileId = this.getAttribute('data-id');
-                    deleteFile(fileId);
-                });
-            });
-        }
-        
-        // 显示文件链接
-        function showFileLink(url) {
-            linkUrl.textContent = url;
-            linkSection.style.display = 'block';
-            
-            // 滚动到链接区域
-            linkSection.scrollIntoView({ behavior: 'smooth' });
-        }
-        
-        // 删除文件
-        async function deleteFile(fileId) {
-            if (!confirm('确定要删除这个文件吗？')) return;
-            
-            try {
-                const file = uploadedFiles.find(f => f.id === fileId);
-                if (!file) return;
-                
-                // 从GitHub删除
-                const filePath = CONFIG.folderPath 
-                    ? `${CONFIG.folderPath}/${file.name}`
-                    : file.name;
-                
-                const apiUrl = `https://api.github.com/repos/${CONFIG.repoOwner}/${CONFIG.repoName}/contents/${filePath}`;
-                
-                // 获取文件SHA
-                const response = await fetch(apiUrl, {
-                    headers: {
-                        'Accept': 'application/vnd.github.v3+json'
-                    }
-                });
-                
-                if (response.ok) {
-                    const fileData = await response.json();
-                    
-                    // 删除文件
-                    await fetch(apiUrl, {
-                        method: 'DELETE',
-                        headers: {
-                            'Accept': 'application/vnd.github.v3+json',
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            message: `Delete ${file.name}`,
-                            sha: fileData.sha,
-                            branch: CONFIG.branch
-                        })
-                    });
-                }
-                
-                // 从本地列表删除
-                uploadedFiles = uploadedFiles.filter(f => f.id !== fileId);
-                saveFileList();
-                renderFileList();
-                
-                showAlert('文件已删除', 'success');
-                
-            } catch (error) {
-                console.error('Delete error:', error);
-                showAlert('删除失败: ' + error.message, 'error');
-            }
-        }
-        
-        // 保存文件列表到本地存储
-        function saveFileList() {
-            localStorage.setItem('uploadedFiles', JSON.stringify(uploadedFiles));
-        }
-        
-        // 显示提示信息
-        function showAlert(message, type) {
-            alertBox.textContent = message;
-            alertBox.className = `alert alert-${type}`;
-            alertBox.style.display = 'block';
-            
+
+        // 自动检测并转换粘贴的链接
+        document.getElementById('githubUrl').addEventListener('paste', function(e) {
             setTimeout(() => {
-                alertBox.style.display = 'none';
-            }, 3000);
-        }
-        
-        // 生成唯一ID
-        function generateId() {
-            return Math.random().toString(36).substring(2) + Date.now().toString(36);
-        }
+                const text = this.value;
+                if (text.includes('raw.githubusercontent.com')) {
+                    convertToHttp();
+                }
+            }, 100);
+        });
     </script>
 </body>
 </html>
